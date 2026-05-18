@@ -1,5 +1,11 @@
 from ast import List
 
+import sys
+import os
+
+if getattr(sys, 'frozen', False):
+    os.chdir(os.path.dirname(sys.executable))
+
 from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
 from database import SessionLocal, init_db, Machine, Snapshot, Event
