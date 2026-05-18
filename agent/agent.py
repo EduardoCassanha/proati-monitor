@@ -5,8 +5,12 @@ import socket
 import getpass
 from datetime import datetime
 import time
+import configparser
 
-SERVER_URL = "http://localhost:8000"
+config = configparser.ConfigParser()
+config.read("config.ini")
+
+SERVER_URL = config["server"]["url"]
 INTERVAL = 60
 
 def get_machine_info() -> dict:
