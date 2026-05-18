@@ -13,6 +13,7 @@ OFFLINE_THRESHOLD = 10
 
 console = Console()
 
+
 def get_machines() -> list:
     try:
         response = requests.get(f"{SERVER_URL}/machines", timeout=5)
@@ -20,6 +21,7 @@ def get_machines() -> list:
         return response.json()
     except requests.RequestException:
         return []
+
 
 def get_events() -> list:
     try:
@@ -29,16 +31,27 @@ def get_events() -> list:
     except requests.RequestException:
         return []
 
+
 def is_offline(last_seen: str) -> bool:
-    last = datetime.fromisoformat(last_seen)
-    return datetime.now() - last > timedelta(hours=OFFLINE_THRESHOLD)
+    try:
+        last = datetime.fromisoformat(last_seen)
+        return datetime.now() - last > timedelta(hours=OFFLINE_THRESHOLD)
+    except (ValueError, TypeError):
+        return True  # Se a data for inválida ou nula, assume offline
+
 
 def status_indicator(machine: dict) -> Text:
-    if is_offline(machine["last_seen"]):
+    if is_offline(machine.get("last_seen", "")):
         return Text("Offline", style="bold red")
-    if machine["cpu_percent"] > 80 or machine["ram_percent"] > 80:
+
+    # Uso do .get(..., 0) evita KeyError se o backend não enviar as métricas
+    cpu = machine.get("cpu_percent", 0)
+    ram = machine.get("ram_percent", 0)
+
+    if cpu > 80 or ram > 80:
         return Text("ALERT", style="bold yellow")
     return Text("OK", style="bold green")
+
 
 def build_machine_table(machines: list) -> Table:
     table = Table(title="PROATI Monitor - Machines", border_style="blue")
@@ -53,21 +66,30 @@ def build_machine_table(machines: list) -> Table:
     table.add_column("Peripherals", style="white")
 
     for machine in machines:
-        offline = is_offline(machine["last_seen"])
-        peripherals = ", ".join(machine["peripherals"]) if machine["peripherals"] else "---"
+        offline = is_offline(machine.get("last_seen", ""))
+
+        # Garante que não vai quebrar se 'peripherals' não existir ou for nulo
+        raw_peripherals = machine.get("peripherals")
+        peripherals = ", ".join(raw_peripherals) if raw_peripherals else "---"
+
+        # Mudança crucial: usamos .get() para ler os valores com segurança
+        cpu_val = machine.get("cpu_percent")
+        ram_val = machine.get("ram_percent")
+        disk_val = machine.get("disk_percent")
 
         table.add_row(
-            machine["hostname"],
-            machine["ip"],
-            machine["user"] if not offline else "---",
+            machine.get("hostname", "Unknown"),
+            machine.get("ip", "---"),
+            machine.get("user", "---") if not offline else "---",
             status_indicator(machine),
-            f"{machine['cpu_percent']}%" if not offline else "---",
-            f"{machine['ram_percent']}%" if not offline else "---",
-            f"{machine['disk_percent']}%" if not offline else "---",
+            f"{cpu_val}%" if (not offline and cpu_val is not None) else "---",
+            f"{ram_val}%" if (not offline and ram_val is not None) else "---",
+            f"{disk_val}%" if (not offline and disk_val is not None) else "---",
             peripherals if not offline else "---",
         )
 
     return table
+
 
 def build_events_panel(events: list) -> Panel:
     if not events:
@@ -75,21 +97,24 @@ def build_events_panel(events: list) -> Panel:
     else:
         content = Text()
         for event in events[:10]:
-            timestamp = datetime.fromisoformat(event["timestamp"]).strftime("%H:%M:%S")
-            if event["type"] == "peripheral_removed":
+            try:
+                timestamp = datetime.fromisoformat(event["timestamp"]).strftime("%H:%M:%S")
+            except (ValueError, TypeError):
+                timestamp = "??:??:??"
+
+            if event.get("type") == "peripheral_removed":
                 style = "bold red"
-            elif event ["type"] == "peripheral_added":
+            elif event.get("type") == "peripheral_added":
                 style = "bold yellow"
             else:
                 style = "bold orange3"
-            content.append(f"[{timestamp}]({event['hostname']} - {event['description']}\n", style=style)
+
+            # Correção aqui: Fechado o colchete do Rich que faltava após [{timestamp}]
+            content.append(
+                f"[{timestamp}] {event.get('hostname', 'Unknown')} - {event.get('description', 'No description')}\n",
+                style=style)
     return Panel(content, title="Recent events", border_style="red")
 
-def build_layout(machines: list, events: list):
-    updated = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    console.print(f"\n[dim]Last updated: {updated}[/dim]")
-    console.print(build_machine_table(machines))
-    console.print(build_events_panel(events))
 
 def main():
     console.print("[bold blue]Monitor Dashboard starting...[/bold blue]\n")
@@ -104,6 +129,7 @@ def main():
                 build_events_panel(events),
             ))
             time.sleep(REFRESH_INTERVAL)
+
 
 if __name__ == "__main__":
     main()
