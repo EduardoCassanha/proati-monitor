@@ -1,11 +1,12 @@
 .env
 *.env
 env/
-.envignoregit add .
-git commit -m "chore: update gitignore and server"
 __pycache__/
 *.pyc
 .venv/
 venv/
 .pytest_cache/
 .idea/
+dist/
+build/
+*.spec
