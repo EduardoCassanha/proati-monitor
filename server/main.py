@@ -5,8 +5,7 @@ from sqlalchemy.orm import Session
 from database import SessionLocal, init_db, Machine, Snapshot, Event
 from datetime import datetime
 from pydantic import BaseModel
-
-app = FastAPI(title="PROATI Monitor")
+from contextlib import asynccontextmanager
 
 class PeripheralSchema(BaseModel):
     name: str
@@ -23,9 +22,12 @@ class SnapshotSchema(BaseModel):
     disk_percent: float
     peripherals: list[PeripheralSchema]
 
-@app.on_event("startup")
-def startup():
+@asynccontextmanager
+async def lifespan(app):
     init_db()
+    yield
+
+app = FastAPI(title="PROATI Monitor", lifespan=lifespan)
 
 def get_db():
     db = SessionLocal()
