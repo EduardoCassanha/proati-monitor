@@ -107,3 +107,52 @@ def receive_snapshot(data: SnapshotSchema, db: Session = Depends(get_db)):
     db.commit()
 
     return {"status": "ok"}
+
+@app.get("/machines")
+def get_machines(db: Session = Depends(get_db)):
+    machines = db.query(Machine).all()
+    result = []
+
+    for machine in machines:
+        last_snapshot = (
+            db.query(Snapshot)
+            .filter(Snapshot.machine_id == machine.id)
+            .order_by(Snapshot.id.desc())
+            .first()
+        )
+
+        peripherals = []
+        if last_snapshot and last_snapshot.peripherals:
+            peripherals = [p["name"] for p in last_snapshot.peripherals]
+
+            result.append({
+                "hostname": machine.hostname,
+                "ip": machine.ip,
+                "last_seen": machine.last_seen.isoformat(),
+                "user": last_snapshot.user if last_snapshot else None,
+                "cpu_percent": last_snapshot.cpu_percent if last_snapshot else 0,
+                "ram_percent": last_snapshot.ram_percent if last_snapshot else 0,
+                "peripherals": peripherals,
+            })
+
+        return result
+
+@app.get("/events")
+def get_events(db: Session = Depends(get_db)):
+    events = (
+        db.query(Event, Machine)
+        .join(Machine, Event.machine_id == Machine.id)
+        .order_by(Event.timestamp.desc())
+        .limit(50)
+        .all()
+    )
+
+    return [
+        {
+            "hostname": machine.hostname,
+            "timestamp": event.timestamp.isoformat(),
+            "type": event.type,
+            "description": event.description,
+        }
+        for event, machine in events
+    ]
