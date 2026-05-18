@@ -1,0 +1,109 @@
+from ast import List
+
+from fastapi import FastAPI, Depends
+from sqlalchemy.orm import Session
+from database import SessionLocal, init_db, Machine, Snapshot, Event
+from datetime import datetime
+from pydantic import BaseModel
+
+app = FastAPI(title="PROATI Monitor")
+
+class PeripheralSchema(BaseModel):
+    name: str
+    type: str
+    status: str
+
+class SnapshotSchema(BaseModel):
+    hostname: str
+    ip: str
+    user: str
+    timestamp: str
+    cpu_percent: float
+    ram_percent: float
+    disk_percent: float
+    peripherals: List[PeripheralSchema]
+
+@app.on.event("startup")
+def startup():
+    init_db()
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+def detect_events(db: Session, machine: Machine, snapshot: Snapshot, current_peripherals: list):
+    last_snapshot = (
+        db.query(Snapshot)
+        .filter(Snapshot.machine_id == machine.id)
+        .order_by(Snapshot.id.desc())
+        .offset(1)
+        .first()
+    )
+
+    if last_snapshot:
+        previous = {p["name"] for p in last_snapshot.peripherals}
+        current = {p["name"] for p in current_peripherals}
+
+        for missing in previous - current:
+            event = Event(
+                machine_id=machine.id,
+                type="peripheral_removed",
+                description=f"Peripheral removed {missing}",
+            )
+            db.add(event)
+
+        for added in current - previous:
+            event = Event(
+                machine_id=machine.id,
+                type="peripheral_added",
+                description=f"Peripheral added {added}",
+            )
+            db.add(event)
+
+    if snapshot.cpu_percent > 80:
+        db.add(Event(
+            machine_id=machine.id,
+            type="high_cpu",
+            description=f"High CPU usage: {snapshot.cpu_percent}%",
+        ))
+
+    if snapshot.ram_percent > 80:
+        db.add(Event(
+            machine_id=machine.id,
+            type="high_ram",
+            description=f"High RAM usage: {snapshot.ram_percent}%",
+        ))
+
+@app.post("/snapshot")
+def receive_snapshot(data: SnapshotSchema, db: Session = Depends(get_db)):
+    machine = db.query(Machine).filter(Machine.hostname == data.hostname).first()
+
+    if not machine:
+        machine = Machine(hostname=data.hostname, ip=data.ip)
+        db.add(machine)
+        db.flush()
+
+    machine.ip = data.ip
+    machine.last_seen = datetime.now()
+
+    peripherals = [p.model_dump() for p in data.peripherals]
+
+    snapshot = Snapshot(
+        machine_id=machine.id,
+        timestamp=datetime.fromisoformat(data.timestamp),
+        user=data.user,
+        cpu_percent=data.cpu_percent,
+        ram_percent=data.ram_percent,
+        disk_percent=data.disk_percent,
+        peripherals=peripherals,
+    )
+    db.add(snapshot)
+    db.flush()
+
+    detect_events(db, machine, snapshot, peripherals)
+    db.commit()
+
+    return {"status": "ok"}
