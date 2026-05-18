@@ -164,3 +164,8 @@ def get_events(db: Session = Depends(get_db)):
         }
         for event, machine in events
     ]
+
+import uvicorn
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
