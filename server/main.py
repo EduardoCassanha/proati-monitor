@@ -21,9 +21,9 @@ class SnapshotSchema(BaseModel):
     cpu_percent: float
     ram_percent: float
     disk_percent: float
-    peripherals: List[PeripheralSchema]
+    peripherals: list[PeripheralSchema]
 
-@app.on.event("startup")
+@app.on_event("startup")
 def startup():
     init_db()
 
