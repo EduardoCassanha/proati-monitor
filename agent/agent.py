@@ -7,7 +7,7 @@ from datetime import datetime
 import time
 
 SERVER_URL = "http://localhost:8000"
-INTERVAL = 300
+INTERVAL = 60
 
 def get_machine_info() -> dict:
     return {
