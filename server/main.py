@@ -19,7 +19,7 @@ class PeripheralSchema(BaseModel):
     status: str
 
 class SnapshotSchema(BaseModel):
-    uuid: str  #
+    uuid: str
     hostname: str
     ip: str
     user: str
@@ -142,6 +142,7 @@ def get_machines(db: Session = Depends(get_db)):
             "user": last_snapshot.user if last_snapshot else None,
             "cpu_percent": last_snapshot.cpu_percent if last_snapshot else 0,
             "ram_percent": last_snapshot.ram_percent if last_snapshot else 0,
+            "disk_percent": last_snapshot.disk_percent if last_snapshot else 0,
             "peripherals": peripherals,
         })
 
