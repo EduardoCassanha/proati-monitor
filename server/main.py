@@ -133,7 +133,10 @@ def get_machines(db: Session = Depends(get_db)):
 
         peripherals = []
         if last_snapshot and last_snapshot.peripherals:
-            peripherals = [p["name"] for p in last_snapshot.peripherals]
+            for p in last_snapshot.peripherals:
+                name = p.get("name") or p.get("Name")
+                if name:
+                    peripherals.append(name)
 
         result.append({
             "hostname": machine.hostname,
