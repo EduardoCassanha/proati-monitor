@@ -45,15 +45,21 @@ def get_hardware_info() -> dict:
 def get_peripherals() -> list:
     c = wmi.WMI()
     devices = []
-    wmi_query = "SELECT Name, PNPClass, Status FROM Win32_PnPEntity WHERE PNPClass IN ('Mouse', 'Keyboard', 'Monitor', 'USB')"
+
+    wmi_query = """
+                SELECT Name, PNPClass, Status
+                FROM Win32_PnPEntity
+                WHERE PNPClass IN ('Mouse', 'Keyboard', 'Monitor', 'USB', 'HIDClass', 'USBDevice') \
+                """
 
     try:
         for device in c.query(wmi_query):
-            devices.append({
-                "name": device.Name,
-                "type": device.PNPClass,
-                "status": device.Status,
-            })
+            if device.Name and "root" not in device.Name.lower():
+                devices.append({
+                    "name": device.Name,
+                    "type": device.PNPClass,
+                    "status": device.Status,
+                })
     except Exception:
         pass
 
