@@ -17,7 +17,17 @@ psutil.cpu_percent(interval=None)
 
 
 def get_machine_info() -> dict:
+    c = wmi.WMI()
+    hw_uuid = "UNKNOWN"
+    try:
+        for system in c.Win32_ComputerSystemProduct():
+            hw_uuid = system.UUID
+            break
+    except Exception:
+        pass
+
     return {
+        "uuid": hw_uuid,
         "hostname": socket.gethostname(),
         "ip": socket.gethostbyname(socket.gethostname()),
         "user": getpass.getuser(),
@@ -35,7 +45,6 @@ def get_hardware_info() -> dict:
 def get_peripherals() -> list:
     c = wmi.WMI()
     devices = []
-
     wmi_query = "SELECT Name, PNPClass, Status FROM Win32_PnPEntity WHERE PNPClass IN ('Mouse', 'Keyboard', 'Monitor', 'USB')"
 
     try:
