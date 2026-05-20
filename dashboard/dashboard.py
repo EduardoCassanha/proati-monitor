@@ -102,7 +102,7 @@ def build_events_panel(events: list) -> Panel:
             if event.get("type") == "peripheral_removed":
                 style = "bold red"
             elif event.get("type") == "peripheral_added":
-                style = "bold yellow"
+                style = "bold green"
             else:
                 style = "bold orange3"
 
