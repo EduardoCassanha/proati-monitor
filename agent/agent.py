@@ -46,20 +46,20 @@ def get_peripherals() -> list:
     c = wmi.WMI()
     devices = []
 
-    wmi_query = """
-                SELECT Name, PNPClass, Status
-                FROM Win32_PnPEntity
-                WHERE PNPClass IN ('Mouse', 'Keyboard', 'Monitor', 'USB', 'HIDClass', 'USBDevice') \
-                """
+    wmi_query = "SELECT Name, DeviceID, Status FROM Win32_PnPEntity"
 
     try:
         for device in c.query(wmi_query):
-            if device.Name and "root" not in device.Name.lower():
-                devices.append({
-                    "name": device.Name,
-                    "type": device.PNPClass,
-                    "status": device.Status,
-                })
+            if device.DeviceID and device.Name:
+                device_id_upper = device.DeviceID.upper()
+
+                if device_id_upper.startswith("USB") or device_id_upper.startswith("HID"):
+                    if "root" not in device_id_upper.lower():
+                        devices.append({
+                            "name": device.Name,
+                            "type": "Hardware Device",
+                            "status": device.Status if device.Status else "OK",
+                        })
     except Exception:
         pass
 
@@ -77,7 +77,7 @@ def collect_snapshot() -> dict:
 
 def send_snapshot(snapshot: dict):
     try:
-        response = requests.post(f"{SERVER_URL}/snapshot/", json=snapshot, timeout=10)
+        response = requests.post(f"{SERVER_URL}/snapshot", json=snapshot, timeout=10)
         response.raise_for_status()
         print(f"[{snapshot['timestamp']}]: Snapshot sent successfully.")
     except requests.RequestException as e:
