@@ -23,8 +23,8 @@ class Machine(Base):
     __tablename__ = "machines"
 
     id = Column(Integer, primary_key=True, index=True)
-    uuid = Column(String, unique=True, index=True)  # Nova coluna para rastreamento imutável do hardware
-    hostname = Column(String, index=True)           # Removido unique=True pois hostnames podem mudar ou colidir
+    uuid = Column(String, unique=True, index=True)
+    hostname = Column(String, index=True)
     ip = Column(String)
     last_seen = Column(DateTime, default=datetime.now)
 
