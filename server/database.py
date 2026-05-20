@@ -28,7 +28,8 @@ class Machine(Base):
     ip = Column(String)
     last_seen = Column(DateTime, default=datetime.now)
 
-    snapshots = relationship("Snapshot", back_populates="machine")
+    snapshots = relationship("Snapshot", back_populates="machine", cascade="all, delete-orphan")
+    events = relationship("Event", back_populates="machine", cascade="all, delete-orphan")
 
 class Snapshot(Base):
     __tablename__ = "snapshots"
@@ -52,6 +53,8 @@ class Event(Base):
     timestamp = Column(DateTime, default=datetime.now)
     type = Column(String)
     description = Column(String)
+
+    machine = relationship("Machine", back_populates="events")
 
 def init_db():
     Base.metadata.create_all(bind=engine)
