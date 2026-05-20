@@ -5,7 +5,7 @@ if getattr(sys, 'frozen', False):
     os.chdir(os.path.dirname(sys.executable))
 
 from fastapi import FastAPI, Depends
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, func
 from database import SessionLocal, init_db, Machine, Snapshot, Event
 from datetime import datetime
 from pydantic import BaseModel
@@ -118,17 +118,21 @@ def receive_snapshot(data: SnapshotSchema, db: Session = Depends(get_db)):
 
 @app.get("/machines")
 def get_machines(db: Session = Depends(get_db)):
-    machines = db.query(Machine).all()
+    subquery = (
+        db.query(Snapshot.machine_id, func.max(Snapshot.id).label("max_id"))
+        .group_by(Snapshot.machine_id)
+        .subquery()
+    )
+
+    query_result = (
+        db.query(Machine, Snapshot)
+        .outerjoin(subquery, Machine.id == subquery.c.machine_id)
+        .outerjoin(Snapshot, Snapshot.id == subquery.c.max_id)
+        .all()
+    )
+
     result = []
-
-    for machine in machines:
-        last_snapshot = (
-            db.query(Snapshot)
-            .filter(Snapshot.machine_id == machine.id)
-            .order_by(Snapshot.id.desc())
-            .first()
-        )
-
+    for machine, last_snapshot in query_result:
         peripherals = []
         if last_snapshot and last_snapshot.peripherals:
             peripherals = [p["name"] for p in last_snapshot.peripherals if "name" in p]
