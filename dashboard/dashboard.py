@@ -35,16 +35,15 @@ def get_events() -> list:
 def is_offline(last_seen: str) -> bool:
     try:
         last = datetime.fromisoformat(last_seen)
-        return datetime.now() - last > timedelta(hours=OFFLINE_THRESHOLD)
+        return datetime.now() - last > timedelta(minutes=OFFLINE_THRESHOLD)
     except (ValueError, TypeError):
-        return True  # Se a data for inválida ou nula, assume offline
+        return True
 
 
 def status_indicator(machine: dict) -> Text:
     if is_offline(machine.get("last_seen", "")):
         return Text("Offline", style="bold red")
 
-    # Uso do .get(..., 0) evita KeyError se o backend não enviar as métricas
     cpu = machine.get("cpu_percent", 0)
     ram = machine.get("ram_percent", 0)
 
@@ -68,11 +67,9 @@ def build_machine_table(machines: list) -> Table:
     for machine in machines:
         offline = is_offline(machine.get("last_seen", ""))
 
-        # Garante que não vai quebrar se 'peripherals' não existir ou for nulo
         raw_peripherals = machine.get("peripherals")
         peripherals = ", ".join(raw_peripherals) if raw_peripherals else "---"
 
-        # Mudança crucial: usamos .get() para ler os valores com segurança
         cpu_val = machine.get("cpu_percent")
         ram_val = machine.get("ram_percent")
         disk_val = machine.get("disk_percent")
@@ -109,7 +106,6 @@ def build_events_panel(events: list) -> Panel:
             else:
                 style = "bold orange3"
 
-            # Correção aqui: Fechado o colchete do Rich que faltava após [{timestamp}]
             content.append(
                 f"[{timestamp}] {event.get('hostname', 'Unknown')} - {event.get('description', 'No description')}\n",
                 style=style)
