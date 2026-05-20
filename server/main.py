@@ -5,7 +5,8 @@ if getattr(sys, 'frozen', False):
     os.chdir(os.path.dirname(sys.executable))
 
 from fastapi import FastAPI, Depends
-from sqlalchemy.orm import Session, func
+from sqlalchemy.orm import Session
+from sqlalchemy import func
 from database import SessionLocal, init_db, Machine, Snapshot, Event
 from datetime import datetime
 from pydantic import BaseModel
