@@ -15,21 +15,32 @@ INTERVAL = 60
 
 psutil.cpu_percent(interval=None)
 
+WMI_CLIENT = wmi.WMI()
 
-def get_machine_info() -> dict:
-    c = wmi.WMI()
+
+def get_static_machine_info() -> dict:
+    """Coleta informações que NUNCA mudam durante a execução."""
     hw_uuid = "UNKNOWN"
     try:
-        for system in c.Win32_ComputerSystemProduct():
+        for system in WMI_CLIENT.Win32_ComputerSystemProduct():
             hw_uuid = system.UUID
             break
     except Exception:
         pass
+    return {"uuid": hw_uuid}
+
+
+def get_dynamic_machine_info() -> dict:
+    try:
+        hostname = socket.gethostname()
+        ip_addr = socket.gethostbyname(hostname)
+    except Exception:
+        hostname = "UNKNOWN"
+        ip_addr = "127.0.0.1"
 
     return {
-        "uuid": hw_uuid,
-        "hostname": socket.gethostname(),
-        "ip": socket.gethostbyname(socket.gethostname()),
+        "hostname": hostname,
+        "ip": ip_addr,
         "user": getpass.getuser(),
     }
 
@@ -43,13 +54,11 @@ def get_hardware_info() -> dict:
 
 
 def get_peripherals() -> list:
-    c = wmi.WMI()
     devices = []
-
     wmi_query = "SELECT Name, DeviceID, Status FROM Win32_PnPEntity"
 
     try:
-        for device in c.query(wmi_query):
+        for device in WMI_CLIENT.query(wmi_query):
             if device.DeviceID and device.Name:
                 device_id_upper = device.DeviceID.upper()
 
@@ -66,10 +75,11 @@ def get_peripherals() -> list:
     return devices
 
 
-def collect_snapshot() -> dict:
+def collect_snapshot(static_info: dict) -> dict:
     return {
         "timestamp": datetime.now().isoformat(),
-        **get_machine_info(),
+        **static_info,
+        **get_dynamic_machine_info(),
         **get_hardware_info(),
         "peripherals": get_peripherals(),
     }
@@ -86,8 +96,11 @@ def send_snapshot(snapshot: dict):
 
 def main():
     print("Agent Starting...")
+
+    static_info = get_static_machine_info()
+
     while True:
-        snapshot = collect_snapshot()
+        snapshot = collect_snapshot(static_info)
         send_snapshot(snapshot)
         time.sleep(INTERVAL)
 
