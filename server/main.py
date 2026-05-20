@@ -1,5 +1,3 @@
-from ast import List
-
 import sys
 import os
 
