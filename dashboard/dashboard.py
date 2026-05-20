@@ -1,5 +1,5 @@
 import requests
-from rich.console import Console
+from rich.console import Console, Group
 from rich.table import Table
 from rich.live import Live
 from rich.panel import Panel
@@ -40,8 +40,8 @@ def is_offline(last_seen: str) -> bool:
         return True
 
 
-def status_indicator(machine: dict) -> Text:
-    if is_offline(machine.get("last_seen", "")):
+def status_indicator(machine: dict, offline: bool) -> Text:
+    if offline:
         return Text("Offline", style="bold red")
 
     cpu = machine.get("cpu_percent", 0)
@@ -78,7 +78,7 @@ def build_machine_table(machines: list) -> Table:
             machine.get("hostname", "Unknown"),
             machine.get("ip", "---"),
             machine.get("user", "---") if not offline else "---",
-            status_indicator(machine),
+            status_indicator(machine, offline),
             f"{cpu_val}%" if (not offline and cpu_val is not None) else "---",
             f"{ram_val}%" if (not offline and ram_val is not None) else "---",
             f"{disk_val}%" if (not offline and disk_val is not None) else "---",
@@ -129,7 +129,6 @@ def main():
                 events = get_events()
                 last_update = current_time
 
-            from rich.console import Group
             live.update(Group(
                 build_machine_table(machines),
                 build_events_panel(events),
