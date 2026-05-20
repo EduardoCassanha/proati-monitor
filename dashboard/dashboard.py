@@ -108,23 +108,34 @@ def build_events_panel(events: list) -> Panel:
 
             content.append(
                 f"[{timestamp}] {event.get('hostname', 'Unknown')} - {event.get('description', 'No description')}\n",
-                style=style)
+                style=style
+            )
     return Panel(content, title="Recent events", border_style="red")
 
 
 def main():
     console.print("[bold blue]Monitor Dashboard starting...[/bold blue]\n")
+
+    machines = []
+    events = []
+    last_update = 0
+
     with Live(refresh_per_second=1, screen=True) as live:
         while True:
-            machines = get_machines()
-            events = get_events()
+            current_time = time.time()
+
+            if current_time - last_update >= REFRESH_INTERVAL or last_update == 0:
+                machines = get_machines()
+                events = get_events()
+                last_update = current_time
 
             from rich.console import Group
             live.update(Group(
                 build_machine_table(machines),
                 build_events_panel(events),
             ))
-            time.sleep(REFRESH_INTERVAL)
+
+            time.sleep(1)
 
 
 if __name__ == "__main__":
