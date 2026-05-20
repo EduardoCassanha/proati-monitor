@@ -19,6 +19,7 @@ class PeripheralSchema(BaseModel):
     status: str
 
 class SnapshotSchema(BaseModel):
+    uuid: str  #
     hostname: str
     ip: str
     user: str
@@ -87,13 +88,14 @@ def detect_events(db: Session, machine: Machine, snapshot: Snapshot, current_per
 
 @app.post("/snapshot")
 def receive_snapshot(data: SnapshotSchema, db: Session = Depends(get_db)):
-    machine = db.query(Machine).filter(Machine.hostname == data.hostname).first()
+    machine = db.query(Machine).filter(Machine.uuid == data.uuid).first()
 
     if not machine:
-        machine = Machine(hostname=data.hostname, ip=data.ip)
+        machine = Machine(uuid=data.uuid, hostname=data.hostname, ip=data.ip)
         db.add(machine)
         db.flush()
 
+    machine.hostname = data.hostname
     machine.ip = data.ip
     machine.last_seen = datetime.now()
 
@@ -133,17 +135,17 @@ def get_machines(db: Session = Depends(get_db)):
         if last_snapshot and last_snapshot.peripherals:
             peripherals = [p["name"] for p in last_snapshot.peripherals]
 
-            result.append({
-                "hostname": machine.hostname,
-                "ip": machine.ip,
-                "last_seen": machine.last_seen.isoformat(),
-                "user": last_snapshot.user if last_snapshot else None,
-                "cpu_percent": last_snapshot.cpu_percent if last_snapshot else 0,
-                "ram_percent": last_snapshot.ram_percent if last_snapshot else 0,
-                "peripherals": peripherals,
-            })
+        result.append({
+            "hostname": machine.hostname,
+            "ip": machine.ip,
+            "last_seen": machine.last_seen.isoformat(),
+            "user": last_snapshot.user if last_snapshot else None,
+            "cpu_percent": last_snapshot.cpu_percent if last_snapshot else 0,
+            "ram_percent": last_snapshot.ram_percent if last_snapshot else 0,
+            "peripherals": peripherals,
+        })
 
-        return result
+    return result
 
 @app.get("/events")
 def get_events(db: Session = Depends(get_db)):
