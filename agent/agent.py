@@ -19,7 +19,6 @@ WMI_CLIENT = wmi.WMI()
 
 
 def get_static_machine_info() -> dict:
-    """Coleta informações que NUNCA mudam durante a execução."""
     hw_uuid = "UNKNOWN"
     try:
         for system in WMI_CLIENT.Win32_ComputerSystemProduct():
