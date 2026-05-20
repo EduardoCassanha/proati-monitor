@@ -13,6 +13,9 @@ config.read("config.ini")
 SERVER_URL = config["server"]["url"]
 INTERVAL = 60
 
+psutil.cpu_percent(interval=None)
+
+
 def get_machine_info() -> dict:
     return {
         "hostname": socket.gethostname(),
@@ -20,26 +23,33 @@ def get_machine_info() -> dict:
         "user": getpass.getuser(),
     }
 
+
 def get_hardware_info() -> dict:
     return {
-        "cpu_percent": psutil.cpu_percent(interval=1),
+        "cpu_percent": psutil.cpu_percent(interval=None),
         "ram_percent": psutil.virtual_memory().percent,
         "disk_percent": psutil.disk_usage("/").percent,
     }
 
-def get_peripherals() -> dict:
+
+def get_peripherals() -> list:
     c = wmi.WMI()
     devices = []
 
-    for device in c.Win32_PnPEntity():
-        if device.PNPClass in ("Mouse", "Keyboard", "Monitor", "USB"):
+    wmi_query = "SELECT Name, PNPClass, Status FROM Win32_PnPEntity WHERE PNPClass IN ('Mouse', 'Keyboard', 'Monitor', 'USB')"
+
+    try:
+        for device in c.query(wmi_query):
             devices.append({
                 "name": device.Name,
                 "type": device.PNPClass,
                 "status": device.Status,
             })
+    except Exception:
+        pass
 
     return devices
+
 
 def collect_snapshot() -> dict:
     return {
@@ -49,6 +59,7 @@ def collect_snapshot() -> dict:
         "peripherals": get_peripherals(),
     }
 
+
 def send_snapshot(snapshot: dict):
     try:
         response = requests.post(f"{SERVER_URL}/snapshot/", json=snapshot, timeout=10)
@@ -57,12 +68,14 @@ def send_snapshot(snapshot: dict):
     except requests.RequestException as e:
         print(f"[{snapshot['timestamp']}] Failed to send snapshot: {e}")
 
-def main ():
+
+def main():
     print("Agent Starting...")
     while True:
         snapshot = collect_snapshot()
         send_snapshot(snapshot)
         time.sleep(INTERVAL)
+
 
 if __name__ == "__main__":
     main()
