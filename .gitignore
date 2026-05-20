@@ -11,3 +11,6 @@ dist/
 build/
 *.spec
 agent/config.ini
+*.db
+*.db-wal
+*.db-shm
