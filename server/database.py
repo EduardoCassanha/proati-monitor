@@ -1,10 +1,21 @@
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, ForeignKey, JSON
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, ForeignKey, JSON, event
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from datetime import datetime
 
 DATABASE_URL = "sqlite:///proati.db"
 
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"check_same_thread": False, "timeout": 30}
+)
+
+@event.listens_for(engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA journal_mode=WAL")
+    cursor.execute("PRAGMA synchronous=NORMAL")
+    cursor.close()
+
 SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
 
@@ -12,7 +23,8 @@ class Machine(Base):
     __tablename__ = "machines"
 
     id = Column(Integer, primary_key=True, index=True)
-    hostname = Column(String, unique=True, index=True)
+    uuid = Column(String, unique=True, index=True)  # Nova coluna para rastreamento imutável do hardware
+    hostname = Column(String, index=True)           # Removido unique=True pois hostnames podem mudar ou colidir
     ip = Column(String)
     last_seen = Column(DateTime, default=datetime.now)
 
