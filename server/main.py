@@ -1,5 +1,8 @@
 import sys
 import os
+import json
+
+JSON_BACKUP_PATH = "snapshots.json"
 
 if getattr(sys, 'frozen', False):
     os.chdir(os.path.dirname(sys.executable))
@@ -88,6 +91,8 @@ def detect_events(db: Session, machine: Machine, snapshot: Snapshot, current_per
 
 @app.post("/snapshot")
 def receive_snapshot(data: SnapshotSchema, db: Session = Depends(get_db)):
+    with open(JSON_BACKUP_PATH, "a", encoding="utf-8") as f:
+        f.write(json.dumps(data.model_dump(), ensure_ascii=False) + "\n")
     machine = db.query(Machine).filter(Machine.uuid == data.uuid).first()
 
     if not machine:
