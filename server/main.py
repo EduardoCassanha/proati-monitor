@@ -7,7 +7,7 @@ if getattr(sys, 'frozen', False):
 from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from database import SessionLocal, init_db, Machine, Snapshot, Event
+from database import SessionLocal, init_db, Machine, Snapshot, Event, engine, Base
 from datetime import datetime
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
@@ -30,6 +30,7 @@ class SnapshotSchema(BaseModel):
 
 @asynccontextmanager
 async def lifespan(app):
+    Base.metadata.drop_all(bind=engine)
     init_db()
     yield
 
