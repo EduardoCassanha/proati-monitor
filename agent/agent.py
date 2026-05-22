@@ -5,7 +5,12 @@ import socket
 import getpass
 from datetime import datetime
 import time
+import sys
+import os
 import configparser
+
+if getattr(sys, 'frozen', False):
+    os.chdir(os.path.dirname(sys.executable))
 
 config = configparser.ConfigParser()
 config.read("config.ini")
