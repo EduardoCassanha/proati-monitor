@@ -53,7 +53,7 @@ def status_indicator(machine: dict, offline: bool) -> Text:
 
 
 def build_machine_table(machines: list) -> Table:
-    table = Table(title="PROATI Monitor - Machines", border_style="blue")
+    table = Table(title="PROATI Monitor - Machines", border_style="blue", show_lines=True)
 
     table.add_column("Hostname", style="cyan")
     table.add_column("IP", style="white")
@@ -67,8 +67,14 @@ def build_machine_table(machines: list) -> Table:
     for machine in machines:
         offline = is_offline(machine.get("last_seen", ""))
 
-        raw_peripherals = machine.get("peripherals")
-        peripherals = ", ".join(raw_peripherals) if raw_peripherals else "---"
+        raw_peripherals = machine.get("peripherals", [])
+
+        filtered_peripherals = [
+            p for p in raw_peripherals
+            if "mouse" in p.lower() or "keyboard" in p.lower() or "teclado" in p.lower()
+        ]
+
+        peripherals = ", ".join(filtered_peripherals) if filtered_peripherals else "---"
 
         cpu_val = machine.get("cpu_percent")
         ram_val = machine.get("ram_percent")
