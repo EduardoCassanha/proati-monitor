@@ -2,7 +2,6 @@ import psutil
 import wmi
 import requests
 import socket
-import getpass
 from datetime import datetime
 import time
 import sys
@@ -21,6 +20,19 @@ INTERVAL = 60
 psutil.cpu_percent(interval=None)
 
 WMI_CLIENT = wmi.WMI()
+
+
+def get_logged_in_user() -> str:
+    try:
+        computer_system = WMI_CLIENT.Win32_ComputerSystem()[0]
+        username_completo = computer_system.UserName  # Retorna "DOMINIO\\usuario" ou "MAQUINA\\usuario"
+
+        if username_completo:
+            return username_completo.split("\\")[-1]
+
+        return "No user logged"
+    except Exception:
+        return "UNKNOWN_USER"
 
 
 def get_static_machine_info() -> dict:
@@ -45,7 +57,7 @@ def get_dynamic_machine_info() -> dict:
     return {
         "hostname": hostname,
         "ip": ip_addr,
-        "user": getpass.getuser(),
+        "user": get_logged_in_user(),
     }
 
 
