@@ -27,7 +27,7 @@ class Machine(Base):
     uuid = Column(String, unique=True, index=True)
     hostname = Column(String, index=True)
     ip = Column(String)
-    last_seen = Column(DateTime, default=datetime.now(timezone.utc))
+    last_seen = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     def __repr__(self):
         return f"<Machine uuid={self.uuid} hostname={self.hostname}"
@@ -40,7 +40,7 @@ class Snapshot(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     machine_id = Column(Integer, ForeignKey("machines.id"))
-    timestamp = Column(DateTime, default=datetime.now(timezone.utc))
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     user = Column(String)
     cpu_percent = Column(Float)
     ram_percent = Column(Float)
@@ -57,7 +57,7 @@ class Event(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     machine_id = Column(Integer, ForeignKey("machines.id"))
-    timestamp = Column(DateTime, default=datetime.now(timezone.utc))
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     event_type = Column(String)
     description = Column(String)
 
