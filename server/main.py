@@ -1,10 +1,7 @@
 import sys
 import os
-import json
-from threading import Lock
 from datetime import datetime
 from contextlib import asynccontextmanager
-
 from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -15,9 +12,6 @@ if getattr(sys, 'frozen', False):
     os.chdir(os.path.dirname(sys.executable))
 
 from database import SessionLocal, init_db, Machine, Snapshot, Event, engine, Base
-
-JSON_BACKUP_PATH = "snapshots.json"
-file_lock = Lock()
 
 class PeripheralSchema(BaseModel):
     name: str
@@ -93,10 +87,6 @@ def detect_events(db: Session, machine: Machine, snapshot: Snapshot, current_per
 
 @app.post("/snapshot")
 def receive_snapshot(data: SnapshotSchema, db: Session = Depends(get_db)):
-    with file_lock:
-        with open(JSON_BACKUP_PATH, "a", encoding="utf-8") as f:
-            f.write(json.dumps(data.model_dump(), ensure_ascii=False) + "\n")
-
     machine = db.query(Machine).filter(Machine.uuid == data.uuid).first()
 
     if not machine:
@@ -179,6 +169,40 @@ def get_events(db: Session = Depends(get_db)):
             "description": event.description,
         }
         for event, machine in events
+    ]
+
+@app.get("/export")
+def export_snapshots(
+        date: str = None,
+        db: Session = Depends(get_db),
+):
+    query = db.query(Snapshot, Machine).join(Machine, Snapshot.machine_id == Machine.id)
+
+    if date:
+        try:
+            target = datetime.strptime(date, "%Y-%m-%d")
+            next_day = target.replace(day=target.day + 1)
+            query = query.filter(
+                Snapshot.timestamp >= next_day,
+                Snapshot.timestamp < next_day,
+            )
+        except ValueError:
+            return {"error": "Invalid date format. Use YYYY-MM-DD"}
+
+    rows = query.order_by(Snapshot.timestamp.asc()).all()
+
+    return [
+        {
+            "timestamp": snapshot.timestamp.isoformat(),
+            "hostname": machine.hostname,
+            "ip": machine.ip,
+            "user": snapshot.user,
+            "cpu_percent": snapshot.cpu_percent,
+            "ram_percent": snapshot.ram_percent,
+            "disk_percent": snapshot.disk_percent,
+            "peripherals": snapshot.peripherals,
+        }
+        for snapshot, machine in rows
     ]
 
 if __name__ == "__main__":
