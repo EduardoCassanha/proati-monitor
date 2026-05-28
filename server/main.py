@@ -71,14 +71,14 @@ def detect_events(db: Session, machine: Machine, snapshot: Snapshot, current_per
                 description=f"Peripheral added: {added}",
             ))
 
-    if snapshot.cpu_percent > 80:
+    if snapshot.cpu_percent > 80 and (last_snapshot.cpu_percent or 0) <= 80:
         db.add(Event(
             machine_id=machine.id,
             type="high_cpu",
             description=f"High CPU usage: {snapshot.cpu_percent}%",
         ))
 
-    if snapshot.ram_percent > 80:
+    if snapshot.ram_percent > 80 and (last_snapshot.cpu_percent or 0) <= 80:
         db.add(Event(
             machine_id=machine.id,
             type="high_ram",
