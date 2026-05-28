@@ -1,8 +1,9 @@
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, ForeignKey, JSON, event
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from datetime import datetime, timezone, timedelta
+import os
 
-DATABASE_URL = "sqlite:///proati.db"
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///proati.db")
 
 engine = create_engine(
     DATABASE_URL,
