@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, ForeignKey, JSON, event
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 DATABASE_URL = "sqlite:///proati.db"
 
@@ -55,6 +55,17 @@ class Event(Base):
     description = Column(String)
 
     machine = relationship("Machine", back_populates="events")
+
+def purge_old_snapshots(days: int = 30):
+    db = SessionLocal()
+    try:
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+        db.query(Snapshot).filter(Snapshot.timestamp < cutoff).delete()
+        db.commit()
+    except Exception:
+        db.rollback()
+    finally:
+        db.close()
 
 def init_db():
     Base.metadata.create_all(bind=engine)

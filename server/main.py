@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from pydantic import BaseModel
 import uvicorn
+from server.database import purge_old_snapshots
 
 if getattr(sys, 'frozen', False):
     os.chdir(os.path.dirname(sys.executable))
@@ -31,9 +32,8 @@ class SnapshotSchema(BaseModel):
 
 @asynccontextmanager
 async def lifespan(app):
-    @asynccontextmanager
-    async def lifespan(app):
-        init_db()
+    init_db()
+    purge_old_snapshots()
     yield
 
 app = FastAPI(title="PROATI Monitor", lifespan=lifespan)
