@@ -1,4 +1,5 @@
 import requests
+import configparser
 from rich.console import Console, Group
 from rich.table import Table
 from rich.live import Live
@@ -7,7 +8,10 @@ from rich.text import Text
 from datetime import datetime, timedelta
 import time
 
-SERVER_URL = "http://localhost:8000"
+config = configparser.ConfigParser()
+config.read("config.ini")
+SERVER_URL = config.get["server"]["url"]
+
 REFRESH_INTERVAL = 30
 OFFLINE_THRESHOLD = 10
 
