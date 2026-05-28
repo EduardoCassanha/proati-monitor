@@ -28,6 +28,9 @@ class Machine(Base):
     ip = Column(String)
     last_seen = Column(DateTime, default=datetime.now(timezone.utc))
 
+    def __repr__(self):
+        return f"<Machine uuid={self.uuid} hostname={self.hostname}"
+
     snapshots = relationship("Snapshot", back_populates="machine", cascade="all, delete-orphan")
     events = relationship("Event", back_populates="machine", cascade="all, delete-orphan")
 
@@ -43,6 +46,9 @@ class Snapshot(Base):
     disk_percent = Column(Float)
     peripherals = Column(JSON)
 
+    def __repr__(self):
+        return f"<Snapshot id={self.id} machine_id{self.machine_id} timestamp={self.timestamp}>"
+
     machine = relationship("Machine", back_populates="snapshots")
 
 class Event(Base):
@@ -53,6 +59,9 @@ class Event(Base):
     timestamp = Column(DateTime, default=datetime.now(timezone.utc))
     event_type = Column(String)
     description = Column(String)
+
+    def __repr__(self):
+        return f"<Event id={self.id} machine_id{self.machine_id} event_type={self.event_type}>"
 
     machine = relationship("Machine", back_populates="events")
 
