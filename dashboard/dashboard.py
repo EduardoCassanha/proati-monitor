@@ -71,7 +71,9 @@ def build_machine_table(machines: list) -> Table:
 
         filtered_peripherals = [
             p for p in raw_peripherals
-            if "mouse" in p.lower() or "keyboard" in p.lower() or "teclado" in p.lower()
+            if "mouse" in p["name"].lower()
+            or "keyboard" in p["name"].lower()
+            or "teclado" in p["name"].lower()
         ]
 
         peripherals = ", ".join(filtered_peripherals) if filtered_peripherals else "---"
