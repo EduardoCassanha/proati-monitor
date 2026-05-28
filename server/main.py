@@ -60,28 +60,28 @@ def detect_events(db: Session, machine: Machine, snapshot: Snapshot, current_per
         for missing in previous - current:
             db.add(Event(
                 machine_id=machine.id,
-                type="peripheral_removed",
+                event_type="peripheral_removed",
                 description=f"Peripheral removed: {missing}",
             ))
 
         for added in current - previous:
             db.add(Event(
                 machine_id=machine.id,
-                type="peripheral_added",
+                event_type="peripheral_added",
                 description=f"Peripheral added: {added}",
             ))
 
     if snapshot.cpu_percent > 80 and (last_snapshot.cpu_percent or 0) <= 80:
         db.add(Event(
             machine_id=machine.id,
-            type="high_cpu",
+            event_type="high_cpu",
             description=f"High CPU usage: {snapshot.cpu_percent}%",
         ))
 
     if snapshot.ram_percent > 80 and (last_snapshot.cpu_percent or 0) <= 80:
         db.add(Event(
             machine_id=machine.id,
-            type="high_ram",
+            event_type="high_ram",
             description=f"High RAM usage: {snapshot.ram_percent}%",
         ))
 
@@ -165,7 +165,7 @@ def get_events(db: Session = Depends(get_db)):
         {
             "hostname": machine.hostname,
             "timestamp": event.timestamp.isoformat(),
-            "type": event.type,
+            "type": event.event.type,
             "description": event.description,
         }
         for event, machine in events

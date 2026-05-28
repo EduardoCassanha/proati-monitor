@@ -51,7 +51,7 @@ class Event(Base):
     id = Column(Integer, primary_key=True, index=True)
     machine_id = Column(Integer, ForeignKey("machines.id"))
     timestamp = Column(DateTime, default=datetime.now(timezone.utc))
-    type = Column(String)
+    event_type = Column(String)
     description = Column(String)
 
     machine = relationship("Machine", back_populates="events")
