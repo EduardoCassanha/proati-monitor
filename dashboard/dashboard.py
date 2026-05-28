@@ -10,7 +10,7 @@ import time
 
 config = configparser.ConfigParser()
 config.read("config.ini")
-SERVER_URL = config.get["server"]["url"]
+SERVER_URL = config["server"]["url"]
 
 REFRESH_INTERVAL = 30
 OFFLINE_THRESHOLD = 10
@@ -80,7 +80,7 @@ def build_machine_table(machines: list) -> Table:
             or "teclado" in p["name"].lower()
         ]
 
-        peripherals = ", ".join(filtered_peripherals) if filtered_peripherals else "---"
+        peripherals = ", ".join(p["name"] for p in filtered_peripherals) if filtered_peripherals else "---"
 
         cpu_val = machine.get("cpu_percent")
         ram_val = machine.get("ram_percent")
