@@ -5,7 +5,7 @@ from rich.table import Table
 from rich.live import Live
 from rich.panel import Panel
 from rich.text import Text
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import time
 import sys
 import os
@@ -17,8 +17,8 @@ config = configparser.ConfigParser()
 config.read("config.ini")
 SERVER_URL = config["server"]["url"]
 
-REFRESH_INTERVAL = 30
-OFFLINE_THRESHOLD = 10
+REFRESH_INTERVAL = 30  # seconds
+OFFLINE_THRESHOLD = 10  # minutes
 
 console = Console()
 
@@ -43,8 +43,8 @@ def get_events() -> list:
 
 def is_offline(last_seen: str) -> bool:
     try:
-        last = datetime.fromisoformat(last_seen)
-        return datetime.now() - last > timedelta(minutes=OFFLINE_THRESHOLD)
+        last = datetime.fromisoformat(last_seen).replace(tzinfo=timezone.utc)
+        return datetime.now(timezone.utc) - last > timedelta(minutes=OFFLINE_THRESHOLD)
     except (ValueError, TypeError):
         return True
 
@@ -80,12 +80,12 @@ def build_machine_table(machines: list) -> Table:
 
         filtered_peripherals = [
             p for p in raw_peripherals
-            if "mouse" in p["name"].lower()
-            or "keyboard" in p["name"].lower()
-            or "teclado" in p["name"].lower()
+            if "mouse" in p.lower()
+            or "keyboard" in p.lower()
+            or "teclado" in p.lower()
         ]
 
-        peripherals = ", ".join(p["name"] for p in filtered_peripherals) if filtered_peripherals else "---"
+        peripherals = ", ".join(filtered_peripherals) if filtered_peripherals else "---"
 
         cpu_val = machine.get("cpu_percent")
         ram_val = machine.get("ram_percent")
