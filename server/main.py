@@ -37,8 +37,9 @@ class SnapshotSchema(BaseModel):
 
 @asynccontextmanager
 async def lifespan(app):
-    Base.metadata.drop_all(bind=engine)
-    init_db()
+    @asynccontextmanager
+    async def lifespan(app):
+        init_db()
     yield
 
 app = FastAPI(title="PROATI Monitor", lifespan=lifespan)
