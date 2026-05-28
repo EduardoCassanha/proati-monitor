@@ -7,6 +7,11 @@ from rich.panel import Panel
 from rich.text import Text
 from datetime import datetime, timedelta
 import time
+import sys
+import os
+
+if getattr(sys, 'frozen', False):
+    os.chdir(os.path.dirname(sys.executable))
 
 config = configparser.ConfigParser()
 config.read("config.ini")
