@@ -96,7 +96,7 @@ def receive_snapshot(data: SnapshotSchema, db: Session = Depends(get_db)):
 
     machine.hostname = data.hostname
     machine.ip = data.ip
-    machine.last_seen = datetime.now()
+    machine.last_seen = datetime.utcnow()
 
     peripherals = [p.model_dump() for p in data.peripherals]
 
