@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, ForeignKey, JSON, event
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
-from datetime import datetime
+from datetime import datetime, timezone
 
 DATABASE_URL = "sqlite:///proati.db"
 
@@ -26,7 +26,7 @@ class Machine(Base):
     uuid = Column(String, unique=True, index=True)
     hostname = Column(String, index=True)
     ip = Column(String)
-    last_seen = Column(DateTime, default=datetime.now)
+    last_seen = Column(DateTime, default=datetime.now(timezone.utc))
 
     snapshots = relationship("Snapshot", back_populates="machine", cascade="all, delete-orphan")
     events = relationship("Event", back_populates="machine", cascade="all, delete-orphan")
@@ -36,7 +36,7 @@ class Snapshot(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     machine_id = Column(Integer, ForeignKey("machines.id"))
-    timestamp = Column(DateTime, default=datetime.now)
+    timestamp = Column(DateTime, default=datetime.now(timezone.utc))
     user = Column(String)
     cpu_percent = Column(Float)
     ram_percent = Column(Float)
@@ -50,7 +50,7 @@ class Event(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     machine_id = Column(Integer, ForeignKey("machines.id"))
-    timestamp = Column(DateTime, default=datetime.now)
+    timestamp = Column(DateTime, default=datetime.now(timezone.utc))
     type = Column(String)
     description = Column(String)
 

@@ -1,6 +1,6 @@
 import sys
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
@@ -96,7 +96,7 @@ def receive_snapshot(data: SnapshotSchema, db: Session = Depends(get_db)):
 
     machine.hostname = data.hostname
     machine.ip = data.ip
-    machine.last_seen = datetime.utcnow()
+    machine.last_seen = datetime.now(timezone.utc)
 
     peripherals = [p.model_dump() for p in data.peripherals]
 
