@@ -18,6 +18,7 @@ class PeripheralSchema(BaseModel):
     type: str
     status: str
 
+
 class SnapshotSchema(BaseModel):
     uuid: str
     hostname: str
@@ -29,13 +30,16 @@ class SnapshotSchema(BaseModel):
     disk_percent: float
     peripherals: list[PeripheralSchema]
 
+
 @asynccontextmanager
 async def lifespan(app):
     init_db()
     purge_old_snapshots()
     yield
 
+
 app = FastAPI(title="PROATI Monitor", lifespan=lifespan)
+
 
 def get_db():
     db = SessionLocal()
@@ -43,6 +47,7 @@ def get_db():
         yield db
     finally:
         db.close()
+
 
 def detect_events(db: Session, machine: Machine, snapshot: Snapshot, current_peripherals: list):
     last_snapshot = (
@@ -52,37 +57,39 @@ def detect_events(db: Session, machine: Machine, snapshot: Snapshot, current_per
         .first()
     )
 
-    if last_snapshot and last_snapshot.peripherals:
-        previous = {p["name"] for p in last_snapshot.peripherals if "name" in p}
-        current = {p["name"] for p in current_peripherals if "name" in p}
+    if last_snapshot:
+        if last_snapshot.peripherals:
+            previous = {p["name"] for p in last_snapshot.peripherals if "name" in p}
+            current = {p["name"] for p in current_peripherals if "name" in p}
 
-        for missing in previous - current:
+            for missing in previous - current:
+                db.add(Event(
+                    machine_id=machine.id,
+                    event_type="peripheral_removed",
+                    description=f"Peripheral removed: {missing}",
+                ))
+
+            for added in current - previous:
+                db.add(Event(
+                    machine_id=machine.id,
+                    event_type="peripheral_added",
+                    description=f"Peripheral added: {added}",
+                ))
+
+        if snapshot.cpu_percent > 80 and (last_snapshot.cpu_percent or 0) <= 80:
             db.add(Event(
                 machine_id=machine.id,
-                event_type="peripheral_removed",
-                description=f"Peripheral removed: {missing}",
+                event_type="high_cpu",
+                description=f"High CPU usage: {snapshot.cpu_percent}%",
             ))
 
-        for added in current - previous:
+        if snapshot.ram_percent > 80 and (last_snapshot.ram_percent or 0) <= 80:
             db.add(Event(
                 machine_id=machine.id,
-                event_type="peripheral_added",
-                description=f"Peripheral added: {added}",
+                event_type="high_ram",
+                description=f"High RAM usage: {snapshot.ram_percent}%",
             ))
 
-    if snapshot.cpu_percent > 80 and (last_snapshot.cpu_percent or 0) <= 80:
-        db.add(Event(
-            machine_id=machine.id,
-            event_type="high_cpu",
-            description=f"High CPU usage: {snapshot.cpu_percent}%",
-        ))
-
-    if snapshot.ram_percent > 80 and (last_snapshot.ram_percent or 0) <= 80:
-        db.add(Event(
-            machine_id=machine.id,
-            event_type="high_ram",
-            description=f"High RAM usage: {snapshot.ram_percent}%",
-        ))
 
 @app.post("/snapshot")
 def receive_snapshot(data: SnapshotSchema, db: Session = Depends(get_db)):
@@ -115,6 +122,7 @@ def receive_snapshot(data: SnapshotSchema, db: Session = Depends(get_db)):
     db.commit()
 
     return {"status": "ok"}
+
 
 @app.get("/machines")
 def get_machines(db: Session = Depends(get_db)):
@@ -150,6 +158,7 @@ def get_machines(db: Session = Depends(get_db)):
 
     return result
 
+
 @app.get("/events")
 def get_events(db: Session = Depends(get_db)):
     events = (
@@ -169,6 +178,7 @@ def get_events(db: Session = Depends(get_db)):
         }
         for event, machine in events
     ]
+
 
 @app.get("/export")
 def export_snapshots(
@@ -203,6 +213,7 @@ def export_snapshots(
         }
         for snapshot, machine in rows
     ]
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000, reload=False)
