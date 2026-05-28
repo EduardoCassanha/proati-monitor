@@ -7,12 +7,11 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from pydantic import BaseModel
 import uvicorn
-from server.database import purge_old_snapshots
+from database import SessionLocal, init_db, purge_old_snapshots, Machine, Snapshot, Event, engine, Base
 
 if getattr(sys, 'frozen', False):
     os.chdir(os.path.dirname(sys.executable))
 
-from database import SessionLocal, init_db, Machine, Snapshot, Event, engine, Base
 
 class PeripheralSchema(BaseModel):
     name: str
@@ -78,7 +77,7 @@ def detect_events(db: Session, machine: Machine, snapshot: Snapshot, current_per
             description=f"High CPU usage: {snapshot.cpu_percent}%",
         ))
 
-    if snapshot.ram_percent > 80 and (last_snapshot.cpu_percent or 0) <= 80:
+    if snapshot.ram_percent > 80 and (last_snapshot.ram_percent or 0) <= 80:
         db.add(Event(
             machine_id=machine.id,
             event_type="high_ram",
@@ -165,7 +164,7 @@ def get_events(db: Session = Depends(get_db)):
         {
             "hostname": machine.hostname,
             "timestamp": event.timestamp.isoformat(),
-            "type": event.event.type,
+            "type": event.event_type,
             "description": event.description,
         }
         for event, machine in events
@@ -183,7 +182,7 @@ def export_snapshots(
             target = datetime.strptime(date, "%Y-%m-%d")
             next_day = target.replace(day=target.day + 1)
             query = query.filter(
-                Snapshot.timestamp >= next_day,
+                Snapshot.timestamp >= target,
                 Snapshot.timestamp < next_day,
             )
         except ValueError:
