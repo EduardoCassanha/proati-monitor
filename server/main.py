@@ -1,6 +1,8 @@
 import sys
 import os
 import json
+import socket
+import threading
 from threading import Lock
 from datetime import datetime
 from contextlib import asynccontextmanager
@@ -18,11 +20,30 @@ from database import SessionLocal, init_db, Machine, Snapshot, Event, engine, Ba
 
 JSON_BACKUP_PATH = "snapshots.json"
 file_lock = Lock()
+DISCOVERY_PORT = 8001
+DISCOVERY_MAGIC_REQ = b"PROATI_DISCOVER"
+DISCOVERY_MAGIC_RESP = b"PROATI_SERVER_HERE:8000"
+
+
+def udp_broadcast_listener():
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.bind(("0.0.0.0", DISCOVERY_PORT))
+
+    while True:
+        try:
+            data, addr = sock.recvfrom(1024)
+            if data.strip() == DISCOVERY_MAGIC_REQ:
+                sock.sendto(DISCOVERY_MAGIC_RESP, addr)
+        except Exception:
+            break
+
 
 class PeripheralSchema(BaseModel):
     name: str
     type: str
     status: str
+
 
 class SnapshotSchema(BaseModel):
     uuid: str
@@ -35,13 +56,17 @@ class SnapshotSchema(BaseModel):
     disk_percent: float
     peripherals: list[PeripheralSchema]
 
+
 @asynccontextmanager
 async def lifespan(app):
-    Base.metadata.drop_all(bind=engine)
-    init_db()
+    init_db()  # Removido drop_all para manter persistência
+    listener_thread = threading.Thread(target=udp_broadcast_listener, daemon=True)
+    listener_thread.start()
     yield
 
+
 app = FastAPI(title="PROATI Monitor", lifespan=lifespan)
+
 
 def get_db():
     db = SessionLocal()
@@ -49,6 +74,7 @@ def get_db():
         yield db
     finally:
         db.close()
+
 
 def detect_events(db: Session, machine: Machine, snapshot: Snapshot, current_peripherals: list):
     last_snapshot = (
@@ -90,6 +116,7 @@ def detect_events(db: Session, machine: Machine, snapshot: Snapshot, current_per
             description=f"High RAM usage: {snapshot.ram_percent}%",
         ))
 
+
 @app.post("/snapshot")
 def receive_snapshot(data: SnapshotSchema, db: Session = Depends(get_db)):
     with file_lock:
@@ -126,6 +153,7 @@ def receive_snapshot(data: SnapshotSchema, db: Session = Depends(get_db)):
 
     return {"status": "ok"}
 
+
 @app.get("/machines")
 def get_machines(db: Session = Depends(get_db)):
     subquery = (
@@ -160,6 +188,7 @@ def get_machines(db: Session = Depends(get_db)):
 
     return result
 
+
 @app.get("/events")
 def get_events(db: Session = Depends(get_db)):
     events = (
@@ -179,6 +208,7 @@ def get_events(db: Session = Depends(get_db)):
         }
         for event, machine in events
     ]
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000, reload=False)
